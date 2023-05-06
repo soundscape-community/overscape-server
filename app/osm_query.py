@@ -7,7 +7,7 @@ OVERPASS_SERVERS = [
     "https://overpass.kumi.systems/api/interpreter/",
 ]
 ZOOM_DEFAULT = 16
-USER_AGENT = 'soundscape-zero/0.1 (dsteinbrook@gmail.com)'
+USER_AGENT = 'overscape/0.1 (dsteinbrook@gmail.com)'
 
 def query(ax, ay, bx, by):
     # using field selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
