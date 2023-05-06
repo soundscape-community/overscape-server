@@ -1,4 +1,4 @@
-# overscape
+# Overscape
 
 Overscape is a lightweight tile server for the
 [Microsoft Soundscape](https://github.com/microsoft/soundscape/) iOS app.

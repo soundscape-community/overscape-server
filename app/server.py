@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 import json
 from aiohttp import web
-from osm_query import ZOOM_DEFAULT
-from tile_cache import CachedTile
+from osm_query import ZOOM_DEFAULT, OverpassClient
+from tile_cache import TileCache
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
-async def gentile_async(zoom, x, y):
+async def gentile_async(zoom, x, y, tile_cache):
     return json.dumps(
         {
             "type": "FeatureCollection",
-            "features": CachedTile(x, y).read(),
+            "features": tile_cache.get(x, y),
         },
         sort_keys=True,
     )
@@ -23,15 +23,17 @@ async def tile_handler(request):
         raise web.HTTPNotFound()
     x = int(request.match_info["x"])
     y = int(request.match_info["y"])
-    tile_data = await gentile_async(zoom, x, y)
+    tile_data = await gentile_async(zoom, x, y, request.app["tile_cache"])
     if tile_data == None:
         raise web.HTTPServiceUnavailable()
     else:
         return web.Response(text=tile_data, content_type="application/json")
 
 
-if __name__ == "__main__":
+def run_serer(overpass_url, user_agent, cache_dir, cache_days, cache_size):
     app = web.Application()
+    overpass_client = OverpassClient(overpass_url, user_agent)
+    app["tile_cache"] = TileCache(cache_dir, cache_days, cache_size, overpass_client)
     app.add_routes(
         [
             web.get(r"/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),

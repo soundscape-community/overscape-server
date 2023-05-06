@@ -1,40 +1,44 @@
 import math
-import random
 import requests
 
-OVERPASS_SERVERS = [
-    #"http://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter/",
-]
 ZOOM_DEFAULT = 16
-USER_AGENT = 'overscape/0.1 (dsteinbrook@gmail.com)'
 
-def query(ax, ay, bx, by):
-    # using field selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
-    # TODO expand matched nodes
-    q = f"""[out:json][bbox:{ax},{ay},{bx},{by}];
-    (
-        node[amenity];
-        node[entrance];
-        node[highway~"bus_stop|crossing|elevator"];
-        node[historic];
-        node[indoormark~"beacon"];
-        node[leisure];
-        node[office];
-        node[railway~"station|subway_entrance|tram_stop"];
-        node[shop];
-        node[tourism];
-        node[zoo~"enclosure"];
-    );
-    out;"""
-    #TODO check response
-    response = requests.get(
-        random.choice(OVERPASS_SERVERS),
-        params={"data": q},
-        headers={'User-Agent': USER_AGENT},
-    )
-    data = response.json()
-    return data
+
+class OverpassClient:
+    def __init__(self, server, user_agent):
+        self.server = server
+        self.user_agent = user_agent
+
+    def query(self, x, y):
+        coords = tile_bbox_from_x_y(x, y)
+        return self.query_coords(*coords)
+
+    def query_coords(self, ax, ay, bx, by):
+        # using field selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
+        # TODO expand matched nodes
+        q = f"""[out:json][bbox:{ax},{ay},{bx},{by}];
+        (
+            node[amenity];
+            node[entrance];
+            node[highway~"bus_stop|crossing|elevator"];
+            node[historic];
+            node[indoormark~"beacon"];
+            node[leisure];
+            node[office];
+            node[railway~"station|subway_entrance|tram_stop"];
+            node[shop];
+            node[tourism];
+            node[zoo~"enclosure"];
+        );
+        out;"""
+        # TODO check response
+        response = requests.get(
+            self.server,
+            params={"data": q},
+            headers={"User-Agent": self.user_agent},
+        )
+        data = response.json()
+        return data
 
 
 # from https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
