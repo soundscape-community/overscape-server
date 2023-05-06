@@ -11,10 +11,9 @@ class CachedTile:
     """Decrease the load on the Overpass server by saving local copies of the
     output.
     """
-
     dir = Path("_tile_cache")
     max_age = timedelta(days=7)
-    max_size = 1e5
+    max_entries = 1e5
 
     def __init__(self, x, y):
         self.x = x
@@ -34,7 +33,7 @@ class CachedTile:
     def _evict_if_needed(self):
         # TODO better algorithm than random file
         entries = list(self.dir.iterdir())
-        if len(entries) > self.max_size:
+        if len(entries) > self.max_entries:
             random.choice(entries).unlink()
 
     def _fetch(self):

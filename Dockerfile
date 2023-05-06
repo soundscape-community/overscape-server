@@ -1,8 +1,8 @@
 FROM python:3.11-alpine
 
-COPY . /app
+COPY app requirements.txt /app
 WORKDIR /app
 RUN pip install -r requirements.txt
 
 EXPOSE 8080
-CMD python app/server.py
+CMD python server.py

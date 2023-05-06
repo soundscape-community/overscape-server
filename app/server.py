@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import json
 from aiohttp import web
+from osm_query import ZOOM_DEFAULT
 from tile_cache import CachedTile
-
-ZOOM_DEFAULT = 16
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py

@@ -1,14 +1,20 @@
 # soundscape-zero
 
-A tile server for [Microsoft Soundscape](https://github.com/microsoft/soundscape/)
-with no bulk data processing or storage footprint.
+This is a lightweight tile server for the
+[Microsoft Soundscape](https://github.com/microsoft/soundscape/) iOS app.
+Its goal is to require no bulk data processing or storage footprint.
 
-The released Soundscape server code required terabytes of storage and cloud
-resources to build its own OpenStreeMap database. soundscape-zero accepts the
-same API requests, but translates them into
-[Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL)
-queries that are executed on a standard
+When Soundscape was supported by Microsoft, it relied on customize services
+based on OpenStreetMap data. Now that Soundscape is an open source offering,
+it can be useful to run the app against public resources, or to spin up a
+personal instance. This lets individuals interested on working on the iOS
+app avoid needing to deploy their own cloud services.
+
+To run:
+```
+$ docker build -t soundscape-zero .
+$ docker run -it --rm -p 8080:8080 soundscape-zero
+```
+
+soundscape-zero passes queries to a standard
 [Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API) server.
-
-This will hopefully allow the app to better leverage existing public
-infrastructure, and consequently reduce the burden of operating it.

@@ -1,20 +1,38 @@
 import math
+import random
 import requests
 
-OVERPASS_API_URL = "http://overpass-api.de/api/interpreter"
-# OVERPASS_API_URL = "https://overpass.kumi.systems/api/interpreter/"
-
+OVERPASS_SERVERS = [
+    #"http://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter/",
+]
+ZOOM_DEFAULT = 16
+USER_AGENT = 'soundscape-zero/0.1 (dsteinbrook@gmail.com)'
 
 def query(ax, ay, bx, by):
+    # using field selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
     # TODO expand matched nodes
-    q = f"""[out:json];
+    q = f"""[out:json][bbox:{ax},{ay},{bx},{by}];
     (
-        node[amenity]({ax},{ay},{bx},{by});
-        node[highway~"bus_stop|crossing|elevator"]({ax},{ay},{bx},{by});
-        node[railway~"station|subway_entrance|tram_stop"]({ax},{ay},{bx},{by});
+        node[amenity];
+        node[entrance];
+        node[highway~"bus_stop|crossing|elevator"];
+        node[historic];
+        node[indoormark~"beacon"];
+        node[leisure];
+        node[office];
+        node[railway~"station|subway_entrance|tram_stop"];
+        node[shop];
+        node[tourism];
+        node[zoo~"enclosure"];
     );
     out;"""
-    response = requests.get(OVERPASS_API_URL, params={"data": q})
+    #TODO check response
+    response = requests.get(
+        random.choice(OVERPASS_SERVERS),
+        params={"data": q},
+        headers={'User-Agent': USER_AGENT},
+    )
     data = response.json()
     return data
 
@@ -30,7 +48,7 @@ def num2deg(xtile, ytile, zoom):
 
 
 # replicating https://github.com/mapbox/postgis-vt-util/blob/master/src/TileBBox.sql
-def tile_bbox_from_x_y(x, y, zoom=16):
+def tile_bbox_from_x_y(x, y, zoom=ZOOM_DEFAULT):
     ax, ay = num2deg(x, y, zoom)
     bx, by = num2deg(x + 1, y + 1, zoom)
     tile_minx = min(ax, bx)
