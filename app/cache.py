@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 
 
 class Cache:
-    """Subclasses should define key() and fetch() methods."""
+    """Used both by the server to store GeoJSON responses, and also by the
+    tests to store Overpass query results.
+    """
 
     def __init__(self, dir, max_days, max_entries):
         self.dir = dir
@@ -29,7 +31,7 @@ class Cache:
         )
 
     def get(self, key, fetch_func):
-        path = self.dir.joinpath(key)
+        path = self.dir.joinpath(f"{key}.json.gz")
         if self._should_fetch(path):
             self.evict_if_needed()
             with gzip.open(path, "wt", encoding="ascii") as f:

@@ -65,12 +65,12 @@ class OverpassClient:
         if "lat" in item and "lon" in item:
             geometry = {
                 "type": "Point",
-                "coordinates": [item["lat"], item["lon"]],
+                "coordinates": [item["lon"], item["lat"]],
             }
         elif "geometry" in item:
             geometry = {
                 "type": "LineString",  # FIXME how to distinuguish from Polygon, Multipolygon, ...?
-                "coordinates": [[x["lat"], x["lon"]] for x in item["geometry"]],
+                "coordinates": [[x["lon"], x["lat"]] for x in item["geometry"]],
             }
         else:
             # FIXME
@@ -100,7 +100,7 @@ class OverpassClient:
 
     def query(self, x, y):
         coords = tile_bbox_from_x_y(x, y)
-        return self.cache.get(f"{x}_{y}.json.gz", lambda: self.query_coords(*coords))
+        return self.cache.get(f"{x}_{y}", lambda: self.query_coords(*coords))
 
     def query_coords(self, ax, ay, bx, by):
         q = self._build_query(ax, ay, bx, by)
