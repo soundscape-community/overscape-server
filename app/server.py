@@ -2,12 +2,11 @@
 import json
 from aiohttp import web
 from osm_query import ZOOM_DEFAULT, OverpassClient
-from tile_cache import TileCache
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
-async def gentile_async(zoom, x, y, tile_cache):
-    return json.dumps(tile_cache.get(x, y), sort_keys=True)
+async def gentile_async(zoom, x, y, overpass_client):
+    return json.dumps(overpass_client.query(x, y), sort_keys=True)
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
@@ -17,7 +16,7 @@ async def tile_handler(request):
         raise web.HTTPNotFound()
     x = int(request.match_info["x"])
     y = int(request.match_info["y"])
-    tile_data = await gentile_async(zoom, x, y, request.app["tile_cache"])
+    tile_data = await gentile_async(zoom, x, y, request.app["overpass_client"])
     if tile_data == None:
         raise web.HTTPServiceUnavailable()
     else:
@@ -26,8 +25,7 @@ async def tile_handler(request):
 
 def run_serer(overpass_url, user_agent, cache_dir, cache_days, cache_size):
     app = web.Application()
-    overpass_client = OverpassClient(overpass_url, user_agent)
-    app["tile_cache"] = TileCache(cache_dir, cache_days, cache_size, overpass_client)
+    app['overpass_client'] = OverpassClient(overpass_url, user_agent, cache_dir, cache_days, cache_size)
     app.add_routes(
         [
             web.get(r"/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),

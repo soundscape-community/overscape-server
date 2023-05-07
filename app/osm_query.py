@@ -1,14 +1,16 @@
 import json
 import math
 import requests
+from cache import Cache
 
 ZOOM_DEFAULT = 16
 
 
 class OverpassClient:
-    def __init__(self, server, user_agent):
+    def __init__(self, server, user_agent, cache_dir, cache_days, cache_size):
         self.server = server
         self.user_agent = user_agent
+        self.cache = Cache(cache_dir, cache_days, cache_size)
         # using tag selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
         with open('osm_tags.json') as f:
             self.tags = json.load(f)
@@ -89,7 +91,7 @@ class OverpassClient:
 
     def query(self, x, y):
         coords = tile_bbox_from_x_y(x, y)
-        return self.query_coords(*coords)
+        return self.cache.get(f"{x}_{y}.json.gz", lambda: self.query_coords(*coords))
 
     def query_coords(self, ax, ay, bx, by):
         q = self._build_query(ax, ay, bx, by)

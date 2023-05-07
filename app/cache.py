@@ -4,16 +4,12 @@ import random
 from datetime import datetime, timedelta
 
 
-class TileCache:
-    """Decrease the load on the Overpass server by saving local copies of the
-    output.
-    """
-
-    def __init__(self, dir, max_days, max_entries, overpass_client):
+class Cache:
+    """Subclasses should define key() and fetch() methods."""
+    def __init__(self, dir, max_days, max_entries):
         self.dir = dir
         self.max_age = timedelta(days=max_days)
         self.max_entries = max_entries
-        self.overpass_client = overpass_client
 
         if not self.dir.exists():
             self.dir.mkdir()
@@ -31,13 +27,12 @@ class TileCache:
             > self.max_age
         )
 
-    def get(self, x, y):
-        path = self.dir.joinpath(f"{x}_{y}.json.gz")
+    def get(self, key, fetch_func):
+        path = self.dir.joinpath(key)
         if self._should_fetch(path):
-            json_data = self.overpass_client.query(x, y)
             self.evict_if_needed()
             with gzip.open(path, "wt", encoding="ascii") as f:
-                json.dump(json_data, f)
+                json.dump(fetch_func(), f)
 
         with gzip.open(path, "rb") as f:
             return json.load(f)
