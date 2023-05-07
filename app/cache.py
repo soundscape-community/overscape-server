@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 class Cache:
     """Subclasses should define key() and fetch() methods."""
+
     def __init__(self, dir, max_days, max_entries):
         self.dir = dir
         self.max_age = timedelta(days=max_days)

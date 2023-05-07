@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 from aiohttp import web
-from osm_query import ZOOM_DEFAULT, OverpassClient
+from overpass import ZOOM_DEFAULT, OverpassClient
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
@@ -25,7 +25,9 @@ async def tile_handler(request):
 
 def run_serer(overpass_url, user_agent, cache_dir, cache_days, cache_size):
     app = web.Application()
-    app['overpass_client'] = OverpassClient(overpass_url, user_agent, cache_dir, cache_days, cache_size)
+    app["overpass_client"] = OverpassClient(
+        overpass_url, user_agent, cache_dir, cache_days, cache_size
+    )
     app.add_routes(
         [
             web.get(r"/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),

@@ -5,5 +5,5 @@ WORKDIR /app
 RUN pip install -r requirements.txt
 
 EXPOSE 8080
-CMD python overscape.py \
+CMD python main.py \
     --overpass-url https://overpass.kumi.systems/api/interpreter/

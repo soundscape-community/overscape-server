@@ -12,7 +12,7 @@ class OverpassClient:
         self.user_agent = user_agent
         self.cache = Cache(cache_dir, cache_days, cache_size)
         # using tag selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
-        with open('osm_tags.json') as f:
+        with open("osm_tags.json") as f:
             self.tags = json.load(f)
 
     def _build_query(self, ax, ay, bx, by):
@@ -45,6 +45,15 @@ class OverpassClient:
         );
         out geom;"""
 
+    def _execute_query(self, q):
+        # TODO check response
+        response = requests.get(
+            self.server,
+            params={"data": q},
+            headers={"User-Agent": self.user_agent},
+        )
+        return response.json()
+
     def item_to_soundscape_geojson(self, item):
         # primary tag (at least one should exist, because it was included
         # in the results)
@@ -58,14 +67,14 @@ class OverpassClient:
                 "type": "Point",
                 "coordinates": [item["lat"], item["lon"]],
             }
-        elif 'geometry' in item:
+        elif "geometry" in item:
             geometry = {
                 "type": "LineString",  # FIXME how to distinuguish from Polygon, Multipolygon, ...?
                 "coordinates": [[x["lat"], x["lon"]] for x in item["geometry"]],
             }
         else:
-            #FIXME
-            pass
+            # FIXME
+            geometry = {"coordinates": [], "type": ""}
 
         return {
             "feature_type": feature_type,
@@ -95,13 +104,7 @@ class OverpassClient:
 
     def query_coords(self, ax, ay, bx, by):
         q = self._build_query(ax, ay, bx, by)
-        # TODO check response
-        response = requests.get(
-            self.server,
-            params={"data": q},
-            headers={"User-Agent": self.user_agent},
-        )
-        data = response.json()
+        data = self._execute_query(q)
         return self.overpass_to_soundscape_geojson(data)
 
 
