@@ -8,6 +8,7 @@ class TileCache:
     """Decrease the load on the Overpass server by saving local copies of the
     output.
     """
+
     def __init__(self, dir, max_days, max_entries, overpass_client):
         self.dir = dir
         self.max_age = timedelta(days=max_days)

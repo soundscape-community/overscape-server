@@ -7,13 +7,7 @@ from tile_cache import TileCache
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
 async def gentile_async(zoom, x, y, tile_cache):
-    return json.dumps(
-        {
-            "type": "FeatureCollection",
-            "features": tile_cache.get(x, y),
-        },
-        sort_keys=True,
-    )
+    return json.dumps(tile_cache.get(x, y), sort_keys=True)
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py

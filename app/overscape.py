@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--user-agent",
         help="How to identify this script to the Overpass server being queried",
-        default="overscape/0.1",
+        default="Overscape/0.1 (https://github.com/steinbro/overscape)",
     )
     parser.add_argument(
         "--cache-days",
