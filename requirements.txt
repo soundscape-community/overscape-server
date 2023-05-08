@@ -1,2 +1,4 @@
 aiohttp==3.8.4
+osm2geojson==0.2.3
 requests==2.30.0
+shapely==2.0.1

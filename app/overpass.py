@@ -1,6 +1,10 @@
 import json
 import math
+
+import osm2geojson
 import requests
+import shapely
+
 from cache import Cache
 
 ZOOM_DEFAULT = 16
@@ -55,46 +59,34 @@ class OverpassClient:
         return response.json()
 
     def item_to_soundscape_geojson(self, item):
+        """Description of format at
+        https://github.com/steinbro/soundscape/blob/main/docs/services/data-plane-schema.md
+        """
         # primary tag (at least one should exist, because it was included
         # in the results)
         feature_type, feature_value = [
-            (k, v) for (k, v) in item["tags"].items() if k in self.tags
+            (k, v) for (k, v) in item["properties"]["tags"].items() if k in self.tags
         ][0]
-
-        geometry = {}
-        if "lat" in item and "lon" in item:
-            geometry = {
-                "type": "Point",
-                "coordinates": [item["lon"], item["lat"]],
-            }
-        elif "geometry" in item:
-            geometry = {
-                "type": "LineString",  # FIXME how to distinuguish from Polygon, Multipolygon, ...?
-                "coordinates": [[x["lon"], x["lat"]] for x in item["geometry"]],
-            }
-        else:
-            # FIXME
-            geometry = {"coordinates": [], "type": ""}
 
         return {
             "feature_type": feature_type,
             "feature_value": feature_value,
-            "geometry": geometry,
-            "osm_ids": [item["id"]],  # FIXME multi-ids
-            "properties": item["tags"],
+            # FIXME avoid serializing + deserializing
+            "geometry": json.loads(shapely.to_geojson(item["shape"])),
+            "osm_ids": [item["properties"]["id"]],  # FIXME multi-ids?
+            "properties": item["properties"]["tags"],
             "type": "Feature",
         }
 
     def overpass_to_soundscape_geojson(self, overpass_json):
-        # description of format at
-        # https://github.com/steinbro/soundscape/blob/main/docs/services/data-plane-schema.md
+        """Use osm2geojson to handle the nontrivial type coversion from OSM
+        nodes/ways/relations to GeoJSON points/polygons/multipolygons/etc.
+        """
         # TODO add intersections
         # TODO add entrances
+        geojson = osm2geojson.json2shapes(overpass_json)
         return {
-            "features": [
-                self.item_to_soundscape_geojson(item)
-                for item in overpass_json["elements"]
-            ],
+            "features": [self.item_to_soundscape_geojson(item) for item in geojson],
             "type": "FeatureCollection",
         }
 
