@@ -30,7 +30,7 @@ def run_serer(overpass_url, user_agent, cache_dir, cache_days, cache_size):
     )
     app.add_routes(
         [
-            web.get(r"/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),
+            web.get(r"/tiles/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),
         ]
     )
     web.run_app(app)

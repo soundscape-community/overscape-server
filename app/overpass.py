@@ -101,7 +101,7 @@ class OverpassClient:
                     "feature_value": "gd_intersection",
                     "geometry": mapping(Point(p)),
                     "osm_ids": oids,
-                    "properties": [],
+                    "properties": {},
                     "type": "Feature",
                 }
 
