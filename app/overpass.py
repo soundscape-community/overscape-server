@@ -3,7 +3,7 @@ import math
 
 import osm2geojson
 import requests
-import shapely
+from shapely.geometry import mapping, Point
 
 from cache import Cache
 
@@ -71,22 +71,52 @@ class OverpassClient:
         return {
             "feature_type": feature_type,
             "feature_value": feature_value,
-            # FIXME avoid serializing + deserializing
-            "geometry": json.loads(shapely.to_geojson(item["shape"])),
-            "osm_ids": [item["properties"]["id"]],  # FIXME multi-ids?
+            "geometry": item["geometry"],
+            "osm_ids": [item["properties"]["id"]],
             "properties": item["properties"]["tags"],
             "type": "Feature",
         }
+
+    def compute_intersections(self, shapes_json):
+        """Find all points that are shared by more than one road.
+
+        Replicates intersection determination from
+        https://github.com/microsoft/soundscape/blob/main/svcs/data/tilefunc.sql#L21
+        """
+        point_to_osm_ids = {}
+        for item in shapes_json:
+            if (
+                item["shape"].geom_type == "LineString"
+                and "highway" in item["properties"]["tags"]
+            ):
+                for point in mapping(item["shape"])["coordinates"]:
+                    point_to_osm_ids.setdefault(point, []).append(
+                        item["properties"]["id"]
+                    )
+
+        for p, oids in point_to_osm_ids.items():
+            if len(oids) > 1:
+                yield {
+                    "feature_type": "highway",
+                    "feature_value": "gd_intersection",
+                    "geometry": mapping(Point(p)),
+                    "osm_ids": oids,
+                    "properties": [],
+                    "type": "Feature",
+                }
 
     def overpass_to_soundscape_geojson(self, overpass_json):
         """Use osm2geojson to handle the nontrivial type coversion from OSM
         nodes/ways/relations to GeoJSON points/polygons/multipolygons/etc.
         """
-        # TODO add intersections
         # TODO add entrances
-        geojson = osm2geojson.json2shapes(overpass_json)
+        geojson = osm2geojson.json2geojson(overpass_json)
+        shapes_json = osm2geojson.json2shapes(overpass_json)
+        features = list(
+            self.item_to_soundscape_geojson(item) for item in geojson["features"]
+        ) + list(self.compute_intersections(shapes_json))
         return {
-            "features": [self.item_to_soundscape_geojson(item) for item in geojson],
+            "features": features,
             "type": "FeatureCollection",
         }
 

@@ -3,6 +3,7 @@ import json
 import math
 from pathlib import Path
 
+import osm2geojson
 import pytest
 
 from overpass import OverpassClient, tile_bbox_from_x_y
@@ -126,4 +127,35 @@ class TestGeoJSON:
             else:
                 pytest.fail(
                     f"{len(our_node)} nodes with osm_id {reference_node['osm_ids']}"
+                )
+
+    @pytest.mark.parametrize(
+        "x,y",
+        [
+            [18741, 25054],
+            [18747, 25074],
+            [18751, 25065],
+        ],
+    )
+    def test_intersections(self, x, y, overpass_client):
+        """Check that each road in an intersection also appears as a feature."""
+        our_geojson = self.soundscape_geojson(x, y, overpass_client)
+
+        coords = tile_bbox_from_x_y(x, y)
+        q = overpass_client._build_query(*coords)
+        overpass_json = overpass_client.cache.get(
+            hashlib.sha256(q.encode("utf-8")).hexdigest(),
+            lambda: overpass_client._execute_query(q),
+        )
+        shapes_json = osm2geojson.json2shapes(overpass_json)
+        intersections = list(overpass_client.compute_intersections(shapes_json))
+        assert len(intersections) > 0
+        for intersection in intersections:
+            for id in intersection["osm_ids"]:
+                assert 1 == len(
+                    list(
+                        TestGeoJSON.find_features_by_attrs(
+                            {"osm_ids": [id]}, our_geojson
+                        )
+                    )
                 )
