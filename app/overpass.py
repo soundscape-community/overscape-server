@@ -10,16 +10,18 @@ from cache import Cache
 ZOOM_DEFAULT = 16
 
 
+# using tag selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
+with open("osm_tags.json") as f:
+    PRIMARY_TAGS = json.load(f)
+
+
 class OverpassClient:
     def __init__(self, server, user_agent, cache_dir, cache_days, cache_size):
         self.server = server
         self.user_agent = user_agent
         self.cache = Cache(cache_dir, cache_days, cache_size)
-        # using tag selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
-        with open("osm_tags.json") as f:
-            self.tags = json.load(f)
 
-    def _build_query(self, ax, ay, bx, by):
+    def _build_query(self, x, y):
         """Generate an Overpass query that is the union of all tags we are
         matching. It will look something like (shortened for brevity):
 
@@ -37,8 +39,9 @@ class OverpassClient:
         with the specified values when given, and include the geometry
         information.
         """
+        ax, ay, bx, by = tile_bbox_from_x_y(x, y)
         q = ""
-        for tag, values in self.tags.items():
+        for tag, values in PRIMARY_TAGS.items():
             if len(values) > 0:
                 q += f"nwr[{tag}~'{'|'.join(values)}'];\n"
             else:
@@ -56,78 +59,15 @@ class OverpassClient:
             params={"data": q},
             headers={"User-Agent": self.user_agent},
         )
-        return response.json()
-
-    def item_to_soundscape_geojson(self, item):
-        """Description of format at
-        https://github.com/steinbro/soundscape/blob/main/docs/services/data-plane-schema.md
-        """
-        # primary tag (at least one should exist, because it was included
-        # in the results)
-        feature_type, feature_value = [
-            (k, v) for (k, v) in item["properties"]["tags"].items() if k in self.tags
-        ][0]
-
-        return {
-            "feature_type": feature_type,
-            "feature_value": feature_value,
-            "geometry": item["geometry"],
-            "osm_ids": [item["properties"]["id"]],
-            "properties": item["properties"]["tags"],
-            "type": "Feature",
-        }
-
-    def compute_intersections(self, shapes_json):
-        """Find all points that are shared by more than one road.
-
-        Replicates intersection determination from
-        https://github.com/microsoft/soundscape/blob/main/svcs/data/tilefunc.sql#L21
-        """
-        point_to_osm_ids = {}
-        for item in shapes_json:
-            if (
-                item["shape"].geom_type == "LineString"
-                and "highway" in item["properties"]["tags"]
-            ):
-                for point in mapping(item["shape"])["coordinates"]:
-                    point_to_osm_ids.setdefault(point, []).append(
-                        item["properties"]["id"]
-                    )
-
-        for p, oids in point_to_osm_ids.items():
-            if len(oids) > 1:
-                yield {
-                    "feature_type": "highway",
-                    "feature_value": "gd_intersection",
-                    "geometry": mapping(Point(p)),
-                    "osm_ids": oids,
-                    "properties": {},
-                    "type": "Feature",
-                }
-
-    def overpass_to_soundscape_geojson(self, overpass_json):
-        """Use osm2geojson to handle the nontrivial type coversion from OSM
-        nodes/ways/relations to GeoJSON points/polygons/multipolygons/etc.
-        """
-        # TODO add entrances
-        geojson = osm2geojson.json2geojson(overpass_json)
-        shapes_json = osm2geojson.json2shapes(overpass_json)
-        features = list(
-            self.item_to_soundscape_geojson(item) for item in geojson["features"]
-        ) + list(self.compute_intersections(shapes_json))
-        return {
-            "features": features,
-            "type": "FeatureCollection",
-        }
+        return OverpassResponse(response.json())
 
     def query(self, x, y):
-        coords = tile_bbox_from_x_y(x, y)
-        return self.cache.get(f"{x}_{y}", lambda: self.query_coords(*coords))
+        return self.cache.get(f"{x}_{y}", lambda: self.uncached_query(x, y))
 
-    def query_coords(self, ax, ay, bx, by):
-        q = self._build_query(ax, ay, bx, by)
-        data = self._execute_query(q)
-        return self.overpass_to_soundscape_geojson(data)
+    def uncached_query(self, x, y):
+        q = self._build_query(x, y)
+        overpass_response = self._execute_query(q)
+        return overpass_response.as_soundscape_geojson()
 
 
 # from https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
@@ -149,3 +89,71 @@ def tile_bbox_from_x_y(x, y, zoom=ZOOM_DEFAULT):
     tile_miny = min(ay, by)
     tile_maxy = max(ay, by)
     return (tile_minx, tile_miny, tile_maxx, tile_maxy)
+
+
+class OverpassResponse:
+    def __init__(self, overpass_json):
+        self.overpass_json = overpass_json
+
+        self.geojson = osm2geojson.json2geojson(overpass_json)
+        self.shapes_json = osm2geojson.json2shapes(overpass_json)
+
+    def _item_to_soundscape_geojson(self, item):
+        """Description of format at
+        https://github.com/steinbro/soundscape/blob/main/docs/services/data-plane-schema.md
+        """
+        # primary tag (at least one should exist, because it was included
+        # in the results)
+        feature_type, feature_value = [
+            (k, v) for (k, v) in item["properties"]["tags"].items() if k in PRIMARY_TAGS
+        ][0]
+
+        return {
+            "feature_type": feature_type,
+            "feature_value": feature_value,
+            "geometry": item["geometry"],
+            "osm_ids": [item["properties"]["id"]],
+            "properties": item["properties"]["tags"],
+            "type": "Feature",
+        }
+
+    def _compute_intersections(self):
+        """Find all points that are shared by more than one road.
+
+        Replicates intersection determination from
+        https://github.com/microsoft/soundscape/blob/main/svcs/data/tilefunc.sql#L21
+        """
+        point_to_osm_ids = {}
+        for item in self.shapes_json:
+            if (
+                item["shape"].geom_type == "LineString"
+                and "highway" in item["properties"]["tags"]
+            ):
+                for point in mapping(item["shape"])["coordinates"]:
+                    point_to_osm_ids.setdefault(point, []).append(
+                        item["properties"]["id"]
+                    )
+
+        for p, oids in point_to_osm_ids.items():
+            if len(oids) > 1:
+                yield {
+                    "feature_type": "highway",
+                    "feature_value": "gd_intersection",
+                    "geometry": mapping(Point(p)),
+                    "osm_ids": oids,
+                    "properties": {},
+                    "type": "Feature",
+                }
+
+    def as_soundscape_geojson(self):
+        """Use osm2geojson to handle the nontrivial type coversion from OSM
+        nodes/ways/relations to GeoJSON points/polygons/multipolygons/etc.
+        """
+        # TODO add entrances
+        features = list(
+            self._item_to_soundscape_geojson(item) for item in self.geojson["features"]
+        ) + list(self._compute_intersections())
+        return {
+            "features": features,
+            "type": "FeatureCollection",
+        }
