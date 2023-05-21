@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from cache import CompressedJSONCache
 
 ZOOM_DEFAULT = 16
 
+logger = logging.getLogger(__name__)
 
 # using tag selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
 with open(Path(__file__).parent / "osm_tags.json") as f:
@@ -54,12 +56,20 @@ class OverpassClient:
         out geom;"""
 
     def _execute_query(self, q):
-        # TODO check response
-        response = requests.get(
-            self.server,
-            params={"data": q},
-            headers={"User-Agent": self.user_agent},
-        )
+        try:
+            response = requests.get(
+                self.server,
+                params={"data": q},
+                headers={"User-Agent": self.user_agent},
+            )
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            logger.warning(f"error connecting to {self.server}: {e}")
+            return None
+
+        if response.status_code != 200:
+            logger.warning(f"received {response.status_code} from {self.server}")
+            return None
+
         return OverpassResponse(response.json())
 
     def query(self, x, y):
@@ -68,6 +78,8 @@ class OverpassClient:
     def uncached_query(self, x, y):
         q = self._build_query(x, y)
         overpass_response = self._execute_query(q)
+        if overpass_response is None:
+            return None
         return overpass_response.as_soundscape_geojson()
 
 

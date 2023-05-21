@@ -5,9 +5,10 @@ import math
 from pathlib import Path
 
 import pytest
+import responses
 
-from overpass import OverpassClient, OverpassResponse
 from cache import CompressedJSONCache
+from overpass import OverpassClient, OverpassResponse
 
 
 class TestCompressedJSONCache:
@@ -28,6 +29,32 @@ class TestCompressedJSONCache:
         with gzip.open(cache_dir / "foo.json.gz", "w") as f:
             f.write(b"not json")
         assert "" == cache.get("foo", lambda: "")
+
+
+class TestOverpassClient:
+    @pytest.fixture
+    def broken_client(self):
+        return OverpassClient(
+            "https://localhost:9999/",  # intentionally bad port
+            "Overscape/0.1",
+            cache_dir=Path("_test_cache"),
+            cache_days=7,
+            cache_size=1e5,
+        )
+
+    def test_bad_server(self, broken_client):
+        assert broken_client.query(1, 1) is None
+
+    @responses.activate
+    def test_bad_response(self, broken_client):
+        # mock out all queries to Overpass server to return a 500 error
+        responses.add(
+            responses.GET,
+            broken_client.server,
+            json={"error": "something went wrong"},
+            status=500,
+        )
+        assert broken_client.query(2, 2) is None
 
 
 class TestGeoJSON:

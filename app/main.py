@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from server import run_serer
+from server import run_server
 
 
 if __name__ == "__main__":
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    run_serer(
+    run_server(
         args.overpass_url,
         args.user_agent,
         args.cache_dir,
