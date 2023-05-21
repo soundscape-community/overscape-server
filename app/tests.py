@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 
 import pytest
+from requests.exceptions import ConnectTimeout
 import responses
 
 from cache import CompressedJSONCache
@@ -31,43 +32,47 @@ class TestCompressedJSONCache:
         assert "" == cache.get("foo", lambda: "")
 
 
+@pytest.fixture
+def overpass_client():
+    return OverpassClient(
+        "https://overpass.kumi.systems/api/interpreter/",
+        "Overscape/0.1",
+        cache_dir=Path("_test_cache"),
+        cache_days=7,
+        cache_size=1e5,
+    )
+
+
 class TestOverpassClient:
-    @pytest.fixture
-    def broken_client(self):
-        return OverpassClient(
-            "https://localhost:9999/",  # intentionally bad port
-            "Overscape/0.1",
-            cache_dir=Path("_test_cache"),
-            cache_days=7,
-            cache_size=1e5,
-        )
-
-    def test_bad_server(self, broken_client):
-        assert broken_client.query(1, 1) is None
-
     @responses.activate
-    def test_bad_response(self, broken_client):
-        # mock out all queries to Overpass server to return a 500 error
+    def test_connection_error(self, overpass_client, caplog):
+        # trigger an (instantaneous) tiemout error on all requests
         responses.add(
             responses.GET,
-            broken_client.server,
+            overpass_client.server,
+            body=ConnectTimeout(),
+        )
+        q = overpass_client._build_query(1, 1)
+        assert overpass_client._execute_query(q) is None
+        assert len(caplog.records) == 1
+        assert "error connecting" in caplog.records[0].message
+
+    @responses.activate
+    def test_server_error(self, overpass_client, caplog):
+        # trigger a 500 error on all requests
+        responses.add(
+            responses.GET,
+            overpass_client.server,
             json={"error": "something went wrong"},
             status=500,
         )
-        assert broken_client.query(2, 2) is None
+        q = overpass_client._build_query(2, 2)
+        assert overpass_client._execute_query(q) is None
+        assert len(caplog.records) == 1
+        assert "received 500" in caplog.records[0].message
 
 
 class TestGeoJSON:
-    @pytest.fixture
-    def overpass_client(self):
-        return OverpassClient(
-            "https://overpass.kumi.systems/api/interpreter/",
-            "Overscape/0.1",
-            cache_dir=Path("_test_cache"),
-            cache_days=7,
-            cache_size=1e5,
-        )
-
     def overpass_response(self, x, y, overpass_client):
         """Outside of tests, we cache our transformed GeoJSON. But in tests,
         since we want to test the transformation, we only cache the response
