@@ -1,4 +1,5 @@
 import hashlib
+import gzip
 import json
 import math
 from pathlib import Path
@@ -6,6 +7,27 @@ from pathlib import Path
 import pytest
 
 from overpass import OverpassClient, OverpassResponse
+from cache import CompressedJSONCache
+
+
+class TestCompressedJSONCache:
+    @pytest.fixture
+    def cache_dir(self):
+        return Path(__file__).parent / "_test_cache"
+
+    @pytest.fixture
+    def cache(self, cache_dir):
+        return CompressedJSONCache(cache_dir, max_days=0, max_entries=1)
+
+    def test_corrupt_gzip(self, cache_dir, cache):
+        with open(cache_dir / "foo.json.gz", "w") as f:
+            f.write("not gzipped")
+        assert "" == cache.get("foo", lambda: "")
+
+    def test_corrupt_json(self, cache_dir, cache):
+        with gzip.open(cache_dir / "foo.json.gz", "w") as f:
+            f.write(b"not json")
+        assert "" == cache.get("foo", lambda: "")
 
 
 class TestGeoJSON:

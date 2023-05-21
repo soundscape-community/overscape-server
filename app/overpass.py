@@ -6,7 +6,7 @@ import osm2geojson
 import requests
 from shapely.geometry import mapping, Point
 
-from cache import Cache
+from cache import CompressedJSONCache
 
 ZOOM_DEFAULT = 16
 
@@ -20,7 +20,7 @@ class OverpassClient:
     def __init__(self, server, user_agent, cache_dir, cache_days, cache_size):
         self.server = server
         self.user_agent = user_agent
-        self.cache = Cache(cache_dir, cache_days, cache_size)
+        self.cache = CompressedJSONCache(cache_dir, cache_days, cache_size)
 
     def _build_query(self, x, y):
         """Generate an Overpass query that is the union of all tags we are

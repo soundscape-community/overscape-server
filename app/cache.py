@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 
 
-class Cache:
+class CompressedJSONCache:
     """Used both by the server to store GeoJSON responses, and also by the
     tests to store Overpass query results.
     """
@@ -24,6 +24,14 @@ class Cache:
             random.choice(entries).unlink()
 
     def _should_fetch(self, path):
+        # remove cached file if not valid gzipped json
+        if path.exists():
+            try:
+                with gzip.open(path, "rb") as f:
+                    json.load(f)
+            except (gzip.BadGzipFile, json.decoder.JSONDecodeError):
+                path.unlink()
+
         return (
             not path.exists()
             or (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime))
