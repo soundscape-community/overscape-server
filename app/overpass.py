@@ -1,5 +1,6 @@
 import json
 import math
+from pathlib import Path
 
 import osm2geojson
 import requests
@@ -11,7 +12,7 @@ ZOOM_DEFAULT = 16
 
 
 # using tag selection from https://github.com/microsoft/soundscape/blob/main/svcs/data/soundscape/other/mapping.yml
-with open("osm_tags.json") as f:
+with open(Path(__file__).parent / "osm_tags.json") as f:
     PRIMARY_TAGS = json.load(f)
 
 
