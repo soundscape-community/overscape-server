@@ -7,11 +7,16 @@ It serves map data by sending queries to a public or privately-hosted [Overpass]
 ## Using with Soundscape app in a simulator
 
 1. In this repository, run the server:
+    1. To use a public Overpass server as the data source, run:
     ```
     $ docker build -t overscape .
     $ docker run -it --rm -p 8080:8080 overscape
     ```
-    1. To confirm the server is up and serving JSON data, use a browser to visit a tile URL like http://localhost:8080/tiles/16/18745/25070.json
+    2. Alternatively, to create a local Overpass container with a small dataset (Washington, DC):
+    ```
+    $ docker-compose up --build
+    ```
+    3. To confirm the server is up and serving JSON data, use a browser to visit a tile URL like http://localhost:8080/tiles/16/18745/25070.json
 2. In the Soundscape repository, in source code file [apps/ios/GuideDogs/Code/Data/Services/Helpers/ServiceModel.swift at line 36](https://github.com/microsoft/soundscape/blob/main/apps/ios/GuideDogs/Code/Data/Services/Helpers/ServiceModel.swift#L36), set the `productionServicesHostName` value to `http://localhost:8080`.
 3. Open apps/ios/GuideDogs.xcworkspace in Xcode, and run the iOS simulator.
     1. To trigger queries to our local server, set "Location" (under the "Feature" menu) to a value that simulates moving, like "City Run."
@@ -19,4 +24,4 @@ It serves map data by sending queries to a public or privately-hosted [Overpass]
 
 ## Running the original Soundscape server
 
-It is also possible to run the original Soundscape server code as provided by Microsoft. Unlike Overscape, the Microsoft version involves loading and hosting of bulk OpenStreetMap data in a PostGIS database. I have put together a [docker-compose file ](https://github.com/steinbro/soundscape/blob/docker-compose/svcs/data/docker-compose.yml)  that contains instructions on how to spin up the necessary services.
+It is also possible to run the original Soundscape server code as provided by Microsoft. Unlike Overscape, the Microsoft version involves loading and hosting of bulk OpenStreetMap data in a PostGIS database. I have put together a [docker-compose file ](https://github.com/openscape-community/openscape/blob/master/svcs/data/docker-compose.yml)  that contains instructions on how to spin up the necessary services.

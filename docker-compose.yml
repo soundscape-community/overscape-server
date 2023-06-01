@@ -1,0 +1,37 @@
+# This docker-compose file creates both an Overscape server, and an Overpass 
+# server with sample data.
+#
+# If you just want to run Overscape against a public Overpass server, you only
+# need to build and run the overscape container.
+version: '3.8'
+
+volumes:
+  overpass_db:
+
+services:
+  overpass:
+    container_name: overpass
+    image: wiktorn/overpass-api
+    ports:
+      - "12345:80"
+    environment:
+      # Change this URL to load different data.
+      - OVERPASS_PLANET_URL=http://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.bz2
+      - OVERPASS_META=no
+      - OVERPASS_MODE=init
+      - OVERPASS_RULES_LOAD=10
+    volumes:
+      - overpass_db:/db
+
+  overscape:
+    container_name: overscape
+    image: openscape/overscape
+    build:
+      dockerfile: Dockerfile
+    environment:
+      - OVERPASS_URL=http://overpass/api/interpreter
+    ports:
+      - "8080:8080"
+    depends_on:
+      overpass:
+        condition: service_healthy
