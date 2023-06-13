@@ -6,7 +6,7 @@ from overpass import ZOOM_DEFAULT, OverpassClient
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
 async def gentile_async(zoom, x, y, overpass_client):
-    response = overpass_client.query(x, y)
+    response = await overpass_client.query(x, y)
     if response is None:
         return response
     return json.dumps(response, sort_keys=True)
@@ -26,7 +26,7 @@ async def tile_handler(request):
         return web.Response(text=tile_data, content_type="application/json")
 
 
-def run_server(overpass_url, user_agent, cache_dir, cache_days, cache_size):
+def run_server(overpass_url, user_agent, cache_dir, cache_days, cache_size, port):
     app = web.Application()
     app["overpass_client"] = OverpassClient(
         overpass_url, user_agent, cache_dir, cache_days, cache_size
@@ -36,4 +36,4 @@ def run_server(overpass_url, user_agent, cache_dir, cache_days, cache_size):
             web.get(r"/tiles/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),
         ]
     )
-    web.run_app(app)
+    web.run_app(app, port=port)

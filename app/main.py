@@ -34,6 +34,12 @@ if __name__ == "__main__":
         help="Maximum number of JSON responses to store",
         default=1e5,
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        help="TCP Port to listen on",
+        default=8080
+    )
     args = parser.parse_args()
 
     run_server(
@@ -42,4 +48,5 @@ if __name__ == "__main__":
         args.cache_dir,
         args.cache_days,
         args.cache_size,
+        args.port
     )

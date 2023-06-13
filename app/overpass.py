@@ -4,8 +4,9 @@ import math
 from pathlib import Path
 
 import osm2geojson
-import requests
 from shapely.geometry import mapping, Point
+import aiohttp
+import asyncio
 
 from cache import CompressedJSONCache
 
@@ -23,6 +24,7 @@ class OverpassClient:
         self.server = server
         self.user_agent = user_agent
         self.cache = CompressedJSONCache(cache_dir, cache_days, cache_size)
+        self.session = None
 
     def _build_query(self, x, y):
         """Generate an Overpass query that is the union of all tags we are
@@ -55,29 +57,31 @@ class OverpassClient:
         );
         out geom;"""
 
-    def _execute_query(self, q):
+    async def _execute_query(self, q):
+        if(not self.session):
+           self.session = aiohttp.ClientSession()
         try:
-            response = requests.get(
+            async with self.session.get(
                 self.server,
                 params={"data": q},
-                headers={"User-Agent": self.user_agent},
-            )
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            logger.warning(f"error connecting to {self.server}: {e}")
+                headers={"User-Agent": self.user_agent}
+            ) as response:
+                if response.status != 200:
+                    logger.warning(f"received {response.status_code} from {self.server}")
+                    return None
+                json = await response.json()
+                return OverpassResponse(json)
+        except Exception as e:
+            logger.warning("got exception", exc_info=True)
             return None
+            
 
-        if response.status_code != 200:
-            logger.warning(f"received {response.status_code} from {self.server}")
-            return None
+    async def query(self, x, y):
+        return await self.cache.get(f"{x}_{y}", lambda: self.uncached_query(x, y))
 
-        return OverpassResponse(response.json())
-
-    def query(self, x, y):
-        return self.cache.get(f"{x}_{y}", lambda: self.uncached_query(x, y))
-
-    def uncached_query(self, x, y):
+    async def uncached_query(self, x, y):
         q = self._build_query(x, y)
-        overpass_response = self._execute_query(q)
+        overpass_response = await self._execute_query(q)
         if overpass_response is None:
             return None
         return overpass_response.as_soundscape_geojson()
