@@ -3,6 +3,7 @@ import gzip
 import json
 import math
 from pathlib import Path
+import re
 
 import aiohttp
 import pytest
@@ -49,7 +50,7 @@ class TestOverpassClient:
     async def test_connection_error(self, aioresponses, overpass_client, caplog):
         # trigger an (instantaneous) tiemout error on all requests
         aioresponses.get(
-            overpass_client.server,
+            re.compile(overpass_client.server + ".*"),
             timeout=True,
         )
         q = overpass_client._build_query(1, 1)
@@ -62,7 +63,7 @@ class TestOverpassClient:
     async def test_server_error(self, aioresponses, overpass_client, caplog):
         # trigger a 500 error on all requests
         aioresponses.get(
-            overpass_client.server,
+            re.compile(overpass_client.server + ".*"),
             payload={"error": "something went wrong"},
             status=500,
         )
