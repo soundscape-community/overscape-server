@@ -4,7 +4,7 @@ import json
 import math
 from pathlib import Path
 
-from aioresponses import aioresponses
+import aiohttp
 import pytest
 
 from cache import CompressedJSONCache
@@ -46,33 +46,32 @@ def overpass_client():
 
 
 class TestOverpassClient:
-    @pytest.fixture
-    def mock_aioresponse(self):
-        with aioresponses() as m:
-            yield m
-
-    async def test_connection_error(self, mock_aioresponse, overpass_client, caplog):
+    async def test_connection_error(self, aioresponses, overpass_client, caplog):
         # trigger an (instantaneous) tiemout error on all requests
-        mock_aioresponse.get(
+        aioresponses.get(
             overpass_client.server,
             timeout=True,
         )
         q = overpass_client._build_query(1, 1)
-        assert await overpass_client._execute_query(q) is None
-        assert len(caplog.records) == 1
-        assert "error connecting" in caplog.records[0].message
+        async with aiohttp.ClientSession() as session:
+            overpass_client.session = session
+            assert await overpass_client._execute_query(q) is None
+            assert len(caplog.records) == 1
+            assert "got exception" in caplog.records[0].message
 
-    async def test_server_error(self, mock_aioresponse, overpass_client, caplog):
+    async def test_server_error(self, aioresponses, overpass_client, caplog):
         # trigger a 500 error on all requests
-        mock_aioresponse.get(
+        aioresponses.get(
             overpass_client.server,
             payload={"error": "something went wrong"},
             status=500,
         )
         q = overpass_client._build_query(2, 2)
-        assert await overpass_client._execute_query(q) is None
-        assert len(caplog.records) == 1
-        assert "received 500" in caplog.records[0].message
+        async with aiohttp.ClientSession() as session:
+            overpass_client.session = session
+            assert (await overpass_client._execute_query(q)) is None
+            assert len(caplog.records) == 1
+            assert "received 500" in caplog.records[0].message
 
 
 class TestGeoJSON:

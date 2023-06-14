@@ -67,7 +67,7 @@ class OverpassClient:
                 headers={"User-Agent": self.user_agent}
             ) as response:
                 if response.status != 200:
-                    logger.warning(f"received {response.status_code} from {self.server}")
+                    logger.warning(f"received {response.status} from {self.server}")
                     return None
                 json = await response.json()
                 return OverpassResponse(json)
