@@ -42,8 +42,9 @@ class CompressedJSONCache:
         path = self.dir.joinpath(f"{key}.json.gz")
         if self._should_fetch(path):
             self.evict_if_needed()
+            data = await fetch_func()
             with gzip.open(path, "wt", encoding="ascii") as f:
-                json.dump(await fetch_func(), f)
+                json.dump(data, f)
 
         with gzip.open(path, "rb") as f:
             return json.load(f)

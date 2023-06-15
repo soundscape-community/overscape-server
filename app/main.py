@@ -1,4 +1,5 @@
 import argparse
+import logging
 from pathlib import Path
 from server import run_server
 
@@ -40,8 +41,14 @@ if __name__ == "__main__":
         help="TCP Port to listen on",
         default=8080
     )
+    levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+    parser.add_argument("--log-level",
+        choices=levels,
+        default="INFO",
+    )
     args = parser.parse_args()
 
+    logging.basicConfig(level=args.log_level)
     run_server(
         args.overpass_url,
         args.user_agent,
