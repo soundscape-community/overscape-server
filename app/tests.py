@@ -3,10 +3,10 @@ import gzip
 import json
 import math
 from pathlib import Path
+import re
 
+import aiohttp
 import pytest
-from requests.exceptions import ConnectTimeout
-import responses
 
 from cache import CompressedJSONCache
 from overpass import OverpassClient, OverpassResponse
@@ -21,15 +21,18 @@ class TestCompressedJSONCache:
     def cache(self, cache_dir):
         return CompressedJSONCache(cache_dir, max_days=0, max_entries=1)
 
-    def test_corrupt_gzip(self, cache_dir, cache):
+    async def fetch_func(arg):
+        return ""
+
+    async def test_corrupt_gzip(self, cache_dir, cache):
         with open(cache_dir / "foo.json.gz", "w") as f:
             f.write("not gzipped")
-        assert "" == cache.get("foo", lambda: "")
+        assert "" == await cache.get("foo", self.fetch_func)
 
-    def test_corrupt_json(self, cache_dir, cache):
+    async def test_corrupt_json(self, cache_dir, cache):
         with gzip.open(cache_dir / "foo.json.gz", "w") as f:
             f.write(b"not json")
-        assert "" == cache.get("foo", lambda: "")
+        assert "" == await cache.get("foo", self.fetch_func)
 
 
 @pytest.fixture
@@ -44,44 +47,48 @@ def overpass_client():
 
 
 class TestOverpassClient:
-    @responses.activate
-    def test_connection_error(self, overpass_client, caplog):
+    async def test_connection_error(self, aioresponses, overpass_client, caplog):
         # trigger an (instantaneous) tiemout error on all requests
-        responses.add(
-            responses.GET,
-            overpass_client.server,
-            body=ConnectTimeout(),
+        aioresponses.get(
+            re.compile(overpass_client.server + ".*"),
+            timeout=True,
         )
         q = overpass_client._build_query(1, 1)
-        assert overpass_client._execute_query(q) is None
-        assert len(caplog.records) == 1
-        assert "error connecting" in caplog.records[0].message
+        async with aiohttp.ClientSession() as session:
+            overpass_client.session = session
+            assert await overpass_client._execute_query(q) is None
+            assert len(caplog.records) == 1
+            assert "got exception" in caplog.records[0].message
 
-    @responses.activate
-    def test_server_error(self, overpass_client, caplog):
+    async def test_server_error(self, aioresponses, overpass_client, caplog):
         # trigger a 500 error on all requests
-        responses.add(
-            responses.GET,
-            overpass_client.server,
-            json={"error": "something went wrong"},
+        aioresponses.get(
+            re.compile(overpass_client.server + ".*"),
+            payload={"error": "something went wrong"},
             status=500,
         )
         q = overpass_client._build_query(2, 2)
-        assert overpass_client._execute_query(q) is None
-        assert len(caplog.records) == 1
-        assert "received 500" in caplog.records[0].message
+        async with aiohttp.ClientSession() as session:
+            overpass_client.session = session
+            assert (await overpass_client._execute_query(q)) is None
+            assert len(caplog.records) == 1
+            assert "received 500" in caplog.records[0].message
 
 
 class TestGeoJSON:
-    def overpass_response(self, x, y, overpass_client):
+    async def overpass_response(self, x, y, overpass_client):
         """Outside of tests, we cache our transformed GeoJSON. But in tests,
         since we want to test the transformation, we only cache the response
         from Overpass.
         """
         q = overpass_client._build_query(x, y)
-        overpass_json = overpass_client.cache.get(
+
+        async def fetch_func():
+            return (await overpass_client._execute_query(q)).overpass_json
+
+        overpass_json = await overpass_client.cache.get(
             hashlib.sha256(q.encode("utf-8")).hexdigest(),
-            lambda: overpass_client._execute_query(q).overpass_json,
+            fetch_func,
         )
         return OverpassResponse(overpass_json)
 
@@ -93,14 +100,14 @@ class TestGeoJSON:
             [18751, 25065],
         ],
     )
-    def test_geojson_schema(self, x, y, overpass_client):
+    async def test_geojson_schema(self, x, y, overpass_client):
         """Check that we match the Soundscape GeoJSON format described at
         https://github.com/steinbro/soundscape/blob/main/docs/services/data-plane-schema.md
 
         This might be checkable with jsonschema validation.
         """
-        json_data = self.overpass_response(
-            x, y, overpass_client
+        json_data = (
+            await self.overpass_response(x, y, overpass_client)
         ).as_soundscape_geojson()
 
         assert len(json_data.keys()) == 2
@@ -151,12 +158,14 @@ class TestGeoJSON:
             [18751, 25065],
         ],
     )
-    def test_geojson_compare(self, x, y, feature_type, feature_value, overpass_client):
+    async def test_geojson_compare(
+        self, x, y, feature_type, feature_value, overpass_client
+    ):
         """Test against some sample JSON responses generated by the original
         Soundscape tile server.
         """
-        our_geojson = self.overpass_response(
-            x, y, overpass_client
+        our_geojson = (
+            await self.overpass_response(x, y, overpass_client)
         ).as_soundscape_geojson()
 
         with open(
@@ -196,9 +205,9 @@ class TestGeoJSON:
             [18751, 25065],
         ],
     )
-    def test_intersections(self, x, y, overpass_client):
+    async def test_intersections(self, x, y, overpass_client):
         """Check that each road in an intersection also appears as a feature."""
-        overpass_response = self.overpass_response(x, y, overpass_client)
+        overpass_response = await self.overpass_response(x, y, overpass_client)
         our_geojson = overpass_response.as_soundscape_geojson()
 
         intersections = list(overpass_response._compute_intersections())

@@ -38,12 +38,12 @@ class CompressedJSONCache:
             > self.max_age
         )
 
-    def get(self, key, fetch_func):
+    async def get(self, key, fetch_func):
         path = self.dir.joinpath(f"{key}.json.gz")
         if self._should_fetch(path):
             self.evict_if_needed()
             with gzip.open(path, "wt", encoding="ascii") as f:
-                json.dump(fetch_func(), f)
+                json.dump(await fetch_func(), f)
 
         with gzip.open(path, "rb") as f:
             return json.load(f)
