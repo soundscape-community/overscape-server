@@ -2,6 +2,7 @@ import json
 import logging
 import math
 from pathlib import Path
+import sentry_sdk
 
 import osm2geojson
 from shapely.geometry import mapping, Point
@@ -57,6 +58,7 @@ class OverpassClient:
         );
         out geom;"""
 
+    @sentry_sdk.trace
     async def _execute_query(self, q):
         if(not self.session):
            self.session = aiohttp.ClientSession()
@@ -76,9 +78,11 @@ class OverpassClient:
             return None
             
 
+    @sentry_sdk.trace
     async def query(self, x, y):
         return await self.cache.get(f"{x}_{y}", lambda: self.uncached_query(x, y))
 
+    @sentry_sdk.trace
     async def uncached_query(self, x, y):
         q = self._build_query(x, y)
         overpass_response = await self._execute_query(q)

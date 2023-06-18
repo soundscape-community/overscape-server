@@ -7,6 +7,7 @@ from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
+@sentry_sdk.trace
 async def gentile_async(zoom, x, y, overpass_client):
     response = await overpass_client.query(x, y)
     if response is None:
@@ -15,6 +16,7 @@ async def gentile_async(zoom, x, y, overpass_client):
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
+@sentry_sdk.trace
 async def tile_handler(request):
     zoom = request.match_info["zoom"]
     if int(zoom) != ZOOM_DEFAULT:
