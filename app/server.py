@@ -27,7 +27,7 @@ async def tile_handler(request):
         return web.Response(text=tile_data, content_type="application/json")
 
 
-def run_server(overpass_url, user_agent, cache_dir, cache_days, cache_size, port, sentry_url, sentry_tsr):
+def run_server(overpass_url, user_agent, cache_dir, cache_days, cache_size, port, sentry_dsn, sentry_tsr):
     sentry_sdk.init(dsn=sentry_url, traces_sample_rate=sentry_tsr)
     app = web.Application()
     app["overpass_client"] = OverpassClient(

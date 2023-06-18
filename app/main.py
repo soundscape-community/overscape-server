@@ -36,9 +36,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--port", type=int, help="TCP Port to listen on", default=8080)
     parser.add_argument(
-        "--sentry-url",
+        "--sentry-dsn",
         type=str,
-        help="""The sentry URL to pass to the SDK. If none is provided, sentry is not used.""",
+        help="""The sentry data source name URL to pass to the SDK. If none is provided, sentry is not used.""",
     )
     parser.add_argument(
         "--sentry-tsr",
@@ -55,6 +55,6 @@ if __name__ == "__main__":
         args.cache_days,
         args.cache_size,
         args.port,
-        args.sentry_url,
-        sentry_tsr,
+        args.sentry_dsn,
+        args.sentry_tsr,
     )
