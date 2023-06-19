@@ -47,6 +47,9 @@ def run_server(
             AioHttpIntegration(),
         ],
     )
+    sentry_sdk.set_tag(
+        "overpass_url", overpass_url
+    )  # Tag all requests for the lifecycle of the app with the overpass URL used
     app = web.Application()
     app["overpass_client"] = OverpassClient(
         overpass_url, user_agent, cache_dir, cache_days, cache_size
