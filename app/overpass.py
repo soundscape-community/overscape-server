@@ -60,13 +60,11 @@ class OverpassClient:
 
     @sentry_sdk.trace
     async def _execute_query(self, q):
-        if(not self.session):
-           self.session = aiohttp.ClientSession()
+        if not self.session:
+            self.session = aiohttp.ClientSession()
         try:
             async with self.session.get(
-                self.server,
-                params={"data": q},
-                headers={"User-Agent": self.user_agent}
+                self.server, params={"data": q}, headers={"User-Agent": self.user_agent}
             ) as response:
                 if response.status != 200:
                     logger.warning(f"received {response.status} from {self.server}")
@@ -75,8 +73,8 @@ class OverpassClient:
                 return OverpassResponse(json)
         except Exception as e:
             logger.warning("got exception", exc_info=True)
+            sentry_sdk.capture_exception(e)
             return None
-            
 
     @sentry_sdk.trace
     async def query(self, x, y):
