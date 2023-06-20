@@ -43,12 +43,12 @@ class CompressedJSONCache:
         path = self.dir.joinpath(f"{key}.json.gz")
         # Record whether this is a cache hit or not
         if self._should_fetch(path):
-            set_tag("cache_hit", True)
+            set_tag("cache_hit", False)
             self.evict_if_needed()
             with gzip.open(path, "wt", encoding="ascii") as f:
                 json.dump(await fetch_func(), f)
         else:
-            set_tag("cache_hit", False)
+            set_tag("cache_hit", True)
 
         with gzip.open(path, "rb") as f:
             return json.load(f)
