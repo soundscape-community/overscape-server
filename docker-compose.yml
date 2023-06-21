@@ -30,6 +30,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - OVERPASS_URL=http://overpass/api/interpreter
+      - SENTRY_DSN=$SENTRY_DSN
+      - SENTRY_TSR=$SENTRY_TSR
     ports:
       - "8080:8080"
     depends_on:
