@@ -2,9 +2,12 @@
 import json
 from aiohttp import web
 from overpass import ZOOM_DEFAULT, OverpassClient
+import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
+@sentry_sdk.trace
 async def gentile_async(zoom, x, y, overpass_client):
     response = await overpass_client.query(x, y)
     if response is None:
@@ -13,6 +16,7 @@ async def gentile_async(zoom, x, y, overpass_client):
 
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
+@sentry_sdk.trace
 async def tile_handler(request):
     zoom = request.match_info["zoom"]
     if int(zoom) != ZOOM_DEFAULT:
@@ -26,7 +30,26 @@ async def tile_handler(request):
         return web.Response(text=tile_data, content_type="application/json")
 
 
-def run_server(overpass_url, user_agent, cache_dir, cache_days, cache_size, port):
+def run_server(
+    overpass_url,
+    user_agent,
+    cache_dir,
+    cache_days,
+    cache_size,
+    port,
+    sentry_dsn,
+    sentry_tsr,
+):
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        traces_sample_rate=sentry_tsr,
+        integrations=[
+            AioHttpIntegration(),
+        ],
+    )
+    sentry_sdk.set_tag(
+        "overpass_url", overpass_url
+    )  # Tag all requests for the lifecycle of the app with the overpass URL used
     app = web.Application()
     app["overpass_client"] = OverpassClient(
         overpass_url, user_agent, cache_dir, cache_days, cache_size

@@ -34,11 +34,17 @@ if __name__ == "__main__":
         help="Maximum number of JSON responses to store",
         default=1e5,
     )
+    parser.add_argument("--port", type=int, help="TCP Port to listen on", default=8080)
     parser.add_argument(
-        "--port",
-        type=int,
-        help="TCP Port to listen on",
-        default=8080
+        "--sentry-dsn",
+        type=str,
+        help="""The sentry data source name URL to pass to the SDK. If none is provided, sentry is not used.""",
+    )
+    parser.add_argument(
+        "--sentry-tsr",
+        type=float,
+        help="""The trace sample rate value for overscape in sentry, a number from 0.0 to 1.0, which sets the approximate percent of app queries will have traces recorded for sampling.""",
+        default=0.1,
     )
     args = parser.parse_args()
 
@@ -48,5 +54,7 @@ if __name__ == "__main__":
         args.cache_dir,
         args.cache_days,
         args.cache_size,
-        args.port
+        args.port,
+        args.sentry_dsn,
+        args.sentry_tsr,
     )
