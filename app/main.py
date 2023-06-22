@@ -9,7 +9,7 @@ if __name__ == "__main__":
         "--overpass-url",
         help="URL of Overpass API server",
         default="https://overpass.kumi.systems/api/interpreter/",
-        # defauult="http://overpass-api.de/api/interpreter",
+        # default="http://overpass-api.de/api/interpreter",
     )
     parser.add_argument(
         "--user-agent",
@@ -35,6 +35,8 @@ if __name__ == "__main__":
         default=1e5,
     )
     parser.add_argument("--port", type=int, help="TCP Port to listen on", default=8080)
+    # To get a sentry dsn, create a project either on your hosted sentry instance, or sentry.io and choose python as the platform.
+    # If you already have a project created in Sentry, navigate to it, then go to client keys (dsn) in the menu.
     parser.add_argument(
         "--sentry-dsn",
         type=str,
