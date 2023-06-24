@@ -1,4 +1,5 @@
 import argparse
+import logging
 from pathlib import Path
 from server import run_server
 
@@ -48,8 +49,14 @@ if __name__ == "__main__":
         help="""The trace sample rate value for overscape in sentry, a number from 0.0 to 1.0, which sets the approximate percent of app queries will have traces recorded for sampling.""",
         default=0.1,
     )
+    levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+    parser.add_argument("--log-level",
+        choices=levels,
+        default="INFO",
+    )
     args = parser.parse_args()
 
+    logging.basicConfig(level=args.log_level)
     run_server(
         args.overpass_url,
         args.user_agent,

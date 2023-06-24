@@ -45,6 +45,7 @@ class CompressedJSONCache:
         if self._should_fetch(path):
             set_tag("cache_hit", False)
             self.evict_if_needed()
+            data = await fetch_func()
             with gzip.open(path, "wt", encoding="ascii") as f:
                 json.dump(await fetch_func(), f)
         else:

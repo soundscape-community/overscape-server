@@ -5,6 +5,8 @@ from overpass import ZOOM_DEFAULT, OverpassClient
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
+import logging
+logger=logging.getLogger(__name__)
 
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
 @sentry_sdk.trace
@@ -23,11 +25,16 @@ async def tile_handler(request):
         raise web.HTTPNotFound()
     x = int(request.match_info["x"])
     y = int(request.match_info["y"])
-    tile_data = await gentile_async(zoom, x, y, request.app["overpass_client"])
-    if tile_data == None:
-        raise web.HTTPServiceUnavailable()
-    else:
-        return web.Response(text=tile_data, content_type="application/json")
+    try:
+        tile_data = await gentile_async(zoom, x, y, request.app["overpass_client"])
+        if tile_data == None:
+            raise web.HTTPServiceUnavailable()
+        else:
+            return web.Response(text=tile_data, content_type="application/json")
+    except:
+        logger.error(f"request: {request.rel_url}")
+
+
 
 
 def run_server(
