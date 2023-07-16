@@ -1,0 +1,19 @@
+# Provide a list of URLs, each optionally with a list of URLs to polygon files
+# specifying the boundaries of the data loaded into the server at that URL. If
+# no bounding polygon is specified, the URL is assumed to cover the entire
+# world.
+#
+# When a tile is requested, the first URL in the list that contains the
+# relevant geographical region will be used.
+#
+# Example with two Overpass servers, the first covering Europe and North
+# America, and the second covering the planet:
+#
+#   - url: "https://overpass.kumi.systems/api/interpreter/"
+#     bounds:
+#     - "https://download.geofabrik.de/north-america.poly"
+#     - "https://download.geofabrik.de/europe.poly"
+#   - url: "https://overpass.kumi.systems/api/interpreter/"
+#
+
+- url: "https://overpass.kumi.systems/api/interpreter/"

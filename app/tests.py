@@ -9,7 +9,7 @@ import aiohttp
 import pytest
 
 from cache import CompressedJSONCache
-from data_source import DataSource
+from data_source import DataSource, parse_server_yaml
 from overpass import OverpassClient, OverpassResponse
 
 
@@ -39,7 +39,7 @@ class TestCompressedJSONCache:
 @pytest.fixture
 def overpass_client():
     return OverpassClient(
-        "https://overpass.kumi.systems/api/interpreter/",
+        [DataSource(url="https://overpass.kumi.systems/api/interpreter/", bounds=[])],
         "Overscape/0.1",
         cache_dir=Path("_test_cache"),
         cache_days=7,
@@ -51,27 +51,29 @@ class TestOverpassClient:
     async def test_connection_error(self, aioresponses, overpass_client, caplog):
         # trigger an (instantaneous) tiemout error on all requests
         aioresponses.get(
-            re.compile(overpass_client.server + ".*"),
+            re.compile(overpass_client.servers[0].url + ".*"),
             timeout=True,
         )
         q = overpass_client._build_query(1, 1)
         async with aiohttp.ClientSession() as session:
             overpass_client.session = session
-            assert await overpass_client._execute_query(q) is None
+            server_url = overpass_client.servers[0].url
+            assert await overpass_client._execute_query(q, server_url) is None
             assert len(caplog.records) == 1
             assert "got exception" in caplog.records[0].message
 
     async def test_server_error(self, aioresponses, overpass_client, caplog):
         # trigger a 500 error on all requests
         aioresponses.get(
-            re.compile(overpass_client.server + ".*"),
+            re.compile(overpass_client.servers[0].url + ".*"),
             payload={"error": "something went wrong"},
             status=500,
         )
         q = overpass_client._build_query(2, 2)
         async with aiohttp.ClientSession() as session:
             overpass_client.session = session
-            assert (await overpass_client._execute_query(q)) is None
+            server_url = overpass_client.servers[0].url
+            assert (await overpass_client._execute_query(q, server_url)) is None
             assert len(caplog.records) == 1
             assert "received 500" in caplog.records[0].message
 
@@ -85,7 +87,8 @@ class TestGeoJSON:
         q = overpass_client._build_query(x, y)
 
         async def fetch_func():
-            return (await overpass_client._execute_query(q)).overpass_json
+            server_url = overpass_client.servers[0].url
+            return (await overpass_client._execute_query(q, server_url)).overpass_json
 
         overpass_json = await overpass_client.cache.get(
             hashlib.sha256(q.encode("utf-8")).hexdigest(),
@@ -225,6 +228,14 @@ class TestGeoJSON:
 
 
 class TestRegionalDataSource:
+    @pytest.fixture
+    def poly_file_path(self):
+        return  Path(__file__).parent.parent / "test_reference" / "great-britain.poly"
+
+    @pytest.fixture
+    def servers_yml_path(self):
+        return Path(__file__).parent.parent / "app" / "servers.yml"
+
     @pytest.mark.parametrize(
         "z,x,y,expected",
         [
@@ -232,10 +243,15 @@ class TestRegionalDataSource:
             [16, 32398, 21045, True],
         ],
     )
-    def test_region_contains(self, z, x, y, expected):
+    def test_region_contains(self, z, x, y, expected, poly_file_path):
         """Chec that we can accurately determine when a tile lies within a region."""
-        with open(
-            Path(__file__).parent.parent / "test_reference" / "great-britain.poly"
-        ) as f:
-            uk = DataSource(poly=f)
+        with open(poly_file_path) as f:
+            uk = DataSource(url="", bounds=[f])
         assert uk.contains(z, x, y) == expected
+
+    def test_parse_server_yaml(self, servers_yml_path):
+        servers = list(parse_server_yaml(servers_yml_path))
+        assert len(servers) == 1
+        assert servers[0].url is not None
+        assert len(servers[0].bounds) == 0
+        assert servers[0].contains(16, 12345, 12345)

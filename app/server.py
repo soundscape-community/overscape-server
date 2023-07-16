@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import json
+
 from aiohttp import web
-from overpass import ZOOM_DEFAULT, OverpassClient
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+
+from overpass import OverpassClient
+from geometry import ZOOM_DEFAULT
 
 import logging
 logger=logging.getLogger(__name__)

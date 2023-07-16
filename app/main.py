@@ -1,16 +1,18 @@
 import argparse
 import logging
 from pathlib import Path
+
+from data_source import parse_server_yaml
 from server import run_server
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--overpass-url",
-        help="URL of Overpass API server",
-        default="https://overpass.kumi.systems/api/interpreter/",
-        # default="http://overpass-api.de/api/interpreter",
+        "--servers-yaml",
+        help="Configuration file containing URLs of data sources",
+        type=Path,
+        default=Path("servers.yml"),
     )
     parser.add_argument(
         "--user-agent",
@@ -25,7 +27,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cache-dir",
-        type=int,
+        type=Path,
         help="Directory to store cached JSON responses",
         default=Path("_tile_cache"),
     )
@@ -58,7 +60,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=args.log_level)
     run_server(
-        args.overpass_url,
+        parse_server_yaml(args.servers_yaml),
         args.user_agent,
         args.cache_dir,
         args.cache_days,

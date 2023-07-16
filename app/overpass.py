@@ -19,11 +19,16 @@ with open(Path(__file__).parent / "osm_tags.json") as f:
 
 
 class OverpassClient:
-    def __init__(self, server, user_agent, cache_dir, cache_days, cache_size):
-        self.server = server
+    def __init__(self, servers, user_agent, cache_dir, cache_days, cache_size):
+        self.servers = servers
         self.user_agent = user_agent
         self.cache = CompressedJSONCache(cache_dir, cache_days, cache_size)
         self.session = None
+
+    def _choose_server(self, x, y):
+        for server in self.server:
+            if server.contains(x, y):
+                return server.url
 
     def _build_query(self, x, y):
         """Generate an Overpass query that is the union of all tags we are
@@ -57,15 +62,15 @@ class OverpassClient:
         out geom;"""
 
     @sentry_sdk.trace
-    async def _execute_query(self, q):
+    async def _execute_query(self, q, server_url):
         if not self.session:
             self.session = aiohttp.ClientSession()
         try:
             async with self.session.get(
-                self.server, params={"data": q}, headers={"User-Agent": self.user_agent}
+                server_url, params={"data": q}, headers={"User-Agent": self.user_agent}
             ) as response:
                 if response.status != 200:
-                    logger.warning(f"received {response.status} from {self.server}")
+                    logger.warning(f"received {response.status} from {server_url}")
                     return None
                 json = await response.json()
                 return OverpassResponse(json)
@@ -81,7 +86,8 @@ class OverpassClient:
     @sentry_sdk.trace
     async def uncached_query(self, x, y):
         q = self._build_query(x, y)
-        overpass_response = await self._execute_query(q)
+        server_url = self._choose_server(x, y)
+        overpass_response = await self._execute_query(q, server_url)
         if overpass_response is None:
             return None
         return overpass_response.as_soundscape_geojson()
