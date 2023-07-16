@@ -24,4 +24,10 @@ It serves map data by sending queries to a public or privately-hosted [Overpass]
 
 ## Running the original Soundscape server
 
-It is also possible to run the original Soundscape server code as provided by Microsoft. Unlike Overscape, the Microsoft version involves loading and hosting of bulk OpenStreetMap data in a PostGIS database. I have put together a [docker-compose file ](https://github.com/openscape-community/openscape/blob/master/svcs/data/docker-compose.yml)  that contains instructions on how to spin up the necessary services.
+You can also run the original Soundscape server code as provided by Microsoft. Unlike Overscape, the Microsoft version involves loading and hosting of bulk OpenStreetMap data in a PostGIS database. See the [docker-compose file ](https://github.com/openscape-community/openscape/blob/master/svcs/data/docker-compose.yml) for details on spinning up the necessary services.
+
+## Running tests
+```
+pip install -r requirements_test.txt
+cd app && pytest --asyncio-mode=auto tests.py
+```
