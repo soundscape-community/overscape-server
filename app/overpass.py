@@ -1,6 +1,5 @@
 import json
 import logging
-import math
 from pathlib import Path
 import sentry_sdk
 
@@ -10,8 +9,7 @@ import aiohttp
 import asyncio
 
 from cache import CompressedJSONCache
-
-ZOOM_DEFAULT = 16
+from geometry import num2deg, tile_bbox_from_x_y
 
 logger = logging.getLogger(__name__)
 
@@ -87,27 +85,6 @@ class OverpassClient:
         if overpass_response is None:
             return None
         return overpass_response.as_soundscape_geojson()
-
-
-# from https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
-# This returns the NW-corner of the square. Use the function with xtile+1 and/or ytile+1 to get the other corners. With xtile+0.5 & ytile+0.5 it will return the center of the tile.
-def num2deg(xtile, ytile, zoom):
-    n = 2.0**zoom
-    lon_deg = xtile / n * 360.0 - 180.0
-    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
-    lat_deg = math.degrees(lat_rad)
-    return (lat_deg, lon_deg)
-
-
-# replicating https://github.com/mapbox/postgis-vt-util/blob/master/src/TileBBox.sql
-def tile_bbox_from_x_y(x, y, zoom=ZOOM_DEFAULT):
-    ax, ay = num2deg(x, y, zoom)
-    bx, by = num2deg(x + 1, y + 1, zoom)
-    tile_minx = min(ax, bx)
-    tile_maxx = max(ax, bx)
-    tile_miny = min(ay, by)
-    tile_maxy = max(ay, by)
-    return (tile_minx, tile_miny, tile_maxx, tile_maxy)
 
 
 class OverpassResponse:

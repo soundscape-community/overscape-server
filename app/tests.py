@@ -9,6 +9,7 @@ import aiohttp
 import pytest
 
 from cache import CompressedJSONCache
+from data_source import DataSource
 from overpass import OverpassClient, OverpassResponse
 
 
@@ -221,3 +222,20 @@ class TestGeoJSON:
                         )
                     )
                 )
+
+
+class TestRegionalDataSource:
+    @pytest.mark.parametrize(
+        "z,x,y,expected",
+        [
+            [16, 18741, 25054, False],
+            [16, 32398, 21045, True],
+        ],
+    )
+    def test_region_contains(self, z, x, y, expected):
+        """Chec that we can accurately determine when a tile lies within a region."""
+        with open(
+            Path(__file__).parent.parent / "test_reference" / "great-britain.poly"
+        ) as f:
+            uk = DataSource(poly=f)
+        assert uk.contains(z, x, y) == expected
