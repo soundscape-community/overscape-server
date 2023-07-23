@@ -10,6 +10,8 @@ import pytest
 
 from cache import CompressedJSONCache
 from overpass import OverpassClient, OverpassResponse
+from postgis import PostgisClient
+from server import backend_client
 
 
 class TestCompressedJSONCache:
@@ -221,3 +223,27 @@ class TestGeoJSON:
                         )
                     )
                 )
+
+
+class TestPostgisClient:
+    @pytest.mark.parametrize(
+        "url,expected_type",
+        [
+            ["https://overpass.kumi.systems/api/interpreter/", OverpassClient],
+            ["postgres://username:password@example.com:5432/osm/", PostgisClient],
+            ["ftp://example.com/", ValueError],
+        ],
+    )
+    def test_url_recognition(self, url, expected_type):
+        """We should get an OverpassClient, PostgisClient, or ValueError based on the URL."""
+        try:
+            return_value = backend_client(
+                url,
+                "Overscape/0.1",
+                cache_dir=Path("_test_cache"),
+                cache_days=7,
+                cache_size=1e5,
+            )
+        except Exception as exc:
+            return_value = exc
+        assert type(return_value) is expected_type

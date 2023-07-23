@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
 import json
+from urllib.parse import urlparse
+
 from aiohttp import web
-from overpass import ZOOM_DEFAULT, OverpassClient
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+
+from overpass import ZOOM_DEFAULT, OverpassClient
+from postgis import PostgisClient
 
 import logging
 logger=logging.getLogger(__name__)
 
+# workaround for aiohttp on WIndows (https://stackoverflow.com/a/69195609)
+import sys, asyncio
+if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
 # based on https://github.com/microsoft/soundscape/blob/main/svcs/data/gentiles.py
 @sentry_sdk.trace
-async def gentile_async(zoom, x, y, overpass_client):
-    response = await overpass_client.query(x, y)
+async def gentile_async(zoom, x, y, backend_client):
+    response = await backend_client.query(x, y)
     if response is None:
         return response
     return json.dumps(response, sort_keys=True)
@@ -26,7 +36,7 @@ async def tile_handler(request):
     x = int(request.match_info["x"])
     y = int(request.match_info["y"])
     try:
-        tile_data = await gentile_async(zoom, x, y, request.app["overpass_client"])
+        tile_data = await gentile_async(zoom, x, y, request.app["backend_client"])
         if tile_data == None:
             raise web.HTTPServiceUnavailable()
         else:
@@ -35,10 +45,21 @@ async def tile_handler(request):
         logger.error(f"request: {request.rel_url}")
 
 
+def backend_client(backend_url, user_agent, cache_dir, cache_days, cache_size):
+    """Determine which backend to use based on URL format."""
+    url_parts = urlparse(backend_url)
+    if url_parts.scheme in ('http', 'https'):
+       return OverpassClient(
+            backend_url, user_agent, cache_dir, cache_days, cache_size
+        )
+    elif url_parts.scheme in ('postgis', 'postgres'):
+        return PostgisClient(backend_url)
+    else:
+        raise ValueError("Unrecognized protocol %r" % url_parts.scheme)
 
 
 def run_server(
-    overpass_url,
+    backend_url,
     user_agent,
     cache_dir,
     cache_days,
@@ -55,12 +76,11 @@ def run_server(
         ],
     )
     sentry_sdk.set_tag(
-        "overpass_url", overpass_url
+        "backend_url", backend_url
     )  # Tag all requests for the lifecycle of the app with the overpass URL used
     app = web.Application()
-    app["overpass_client"] = OverpassClient(
-        overpass_url, user_agent, cache_dir, cache_days, cache_size
-    )
+    app["backend_client"] =backend_client(
+        backend_url, user_agent, cache_dir, cache_days, cache_size)
     app.add_routes(
         [
             web.get(r"/tiles/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),

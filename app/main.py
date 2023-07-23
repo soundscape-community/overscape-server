@@ -7,8 +7,8 @@ from server import run_server
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--overpass-url",
-        help="URL of Overpass API server",
+        "--backend-url",
+        help="URL of Overpass API or PostGIS server",
         default="https://overpass.kumi.systems/api/interpreter/",
         # default="http://overpass-api.de/api/interpreter",
     )
@@ -21,7 +21,7 @@ if __name__ == "__main__":
         "--cache-days",
         type=int,
         help="Number of days after which cached items should be refreshed",
-        default=7,
+        default=30,
     )
     parser.add_argument(
         "--cache-dir",
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=args.log_level)
     run_server(
-        args.overpass_url,
+        args.backend_url,
         args.user_agent,
         args.cache_dir,
         args.cache_days,
