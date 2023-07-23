@@ -53,9 +53,7 @@ def backend_client(backend_url, user_agent, cache_dir, cache_days, cache_size):
             backend_url, user_agent, cache_dir, cache_days, cache_size
         )
     elif url_parts.scheme in ('postgis', 'postgres'):
-        return PostgisClient(
-            backend_url, user_agent, cache_dir, cache_days, cache_size
-        )
+        return PostgisClient(backend_url)
     else:
         raise ValueError("Unrecognized protocol %r" % url_parts.scheme)
 
