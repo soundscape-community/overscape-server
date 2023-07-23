@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sentry-dsn",
         type=str,
-        default="",
+        default="none",
         help="""The sentry data source name URL to pass to the SDK. If none is provided, no events are submitted to any Sentry instance.""",
     )
     parser.add_argument(

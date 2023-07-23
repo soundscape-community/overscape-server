@@ -69,7 +69,7 @@ def run_server(
     sentry_tsr,
 ):
     sentry_sdk.init(
-        dsn=sentry_dsn,
+        dsn=sentry_dsn if sentry_dsn != "none" else "",
         traces_sample_rate=sentry_tsr,
         integrations=[
             AioHttpIntegration(),
