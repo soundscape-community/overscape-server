@@ -11,6 +11,7 @@ ENV BACKEND_URL=https://overpass.kumi.systems/api/interpreter/
 # The special string "none" is used here if no other environment variables overwrite it;
 # overscape will initialize sentry with an empty string if this is passed as an argument
 ENV SENTRY_DSN="none"
-ENV SENTRY_TSR=""
+# Modify in .env
+ENV SENTRY_TSR="0.0"
 EXPOSE 8080
 CMD python main.py --backend-url $BACKEND_URL --sentry-dsn $SENTRY_DSN --sentry-tsr $SENTRY_TSR
