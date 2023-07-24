@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 import re
+import shutil
+import tempfile
 
 import aiohttp
 import pytest
@@ -16,23 +18,22 @@ from server import backend_client
 
 class TestCompressedJSONCache:
     @pytest.fixture
-    def cache_dir(self):
-        return Path(__file__).parent / "_test_cache"
-
-    @pytest.fixture
-    def cache(self, cache_dir):
-        return CompressedJSONCache(cache_dir, max_days=0, max_entries=1)
+    def cache(self):
+        # create a temporary directory to be removed after test execution
+        cache_dir = Path(tempfile.mkdtemp())
+        yield CompressedJSONCache(cache_dir, max_days=0, max_entries=1)
+        shutil.rmtree(cache_dir)
 
     async def fetch_func(arg):
         return ""
 
-    async def test_corrupt_gzip(self, cache_dir, cache):
-        with open(cache_dir / "foo.json.gz", "w") as f:
+    async def test_corrupt_gzip(self, cache):
+        with open(cache.dir / "foo.json.gz", "w") as f:
             f.write("not gzipped")
         assert "" == await cache.get("foo", self.fetch_func)
 
-    async def test_corrupt_json(self, cache_dir, cache):
-        with gzip.open(cache_dir / "foo.json.gz", "w") as f:
+    async def test_corrupt_json(self, cache):
+        with gzip.open(cache.dir / "foo.json.gz", "w") as f:
             f.write(b"not json")
         assert "" == await cache.get("foo", self.fetch_func)
 
