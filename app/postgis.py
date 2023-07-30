@@ -10,6 +10,7 @@ import aiopg
 from psycopg2.extras import NamedTupleCursor
 import sentry_sdk
 
+from cache import CompressedJSONCache
 from overpass import ZOOM_DEFAULT
 
 
@@ -23,11 +24,17 @@ class PostgisClient:
     The server is assumed to already be populated, including having the
     soundscape_tile function installed.
     """
-    def __init__(self, server):
+    def __init__(self, server, cache_dir, cache_days, cache_size):
         self.server = server
+        self.cache = CompressedJSONCache(cache_dir, cache_days, cache_size)
 
     @sentry_sdk.trace
     async def query(self, x, y):
+        response = await self.cache.get(f"{x}_{y}", lambda: self.uncached_query(x, y))
+        return response
+
+    @sentry_sdk.trace
+    async def uncached_query(self, x, y):
         try:
             async with aiopg.connect(self.server) as conn:
                 async with conn.cursor(cursor_factory=NamedTupleCursor) as cursor:

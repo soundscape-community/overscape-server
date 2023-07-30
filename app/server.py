@@ -12,7 +12,7 @@ from postgis import PostgisClient
 import logging
 logger=logging.getLogger(__name__)
 
-# workaround for aiohttp on WIndows (https://stackoverflow.com/a/69195609)
+# workaround for aiohttp on Windows (https://stackoverflow.com/a/69195609)
 import sys, asyncio
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -53,7 +53,7 @@ def backend_client(backend_url, user_agent, cache_dir, cache_days, cache_size):
             backend_url, user_agent, cache_dir, cache_days, cache_size
         )
     elif url_parts.scheme in ('postgis', 'postgres'):
-        return PostgisClient(backend_url)
+        return PostgisClient(backend_url, cache_dir, cache_days, cache_size)
     else:
         raise ValueError("Unrecognized protocol %r" % url_parts.scheme)
 
