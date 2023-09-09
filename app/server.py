@@ -7,6 +7,7 @@ import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 from overpass import ZOOM_DEFAULT, OverpassClient
+from overture import OvertureClient
 from postgis import PostgisClient
 
 import logging
@@ -54,6 +55,8 @@ def backend_client(backend_url, user_agent, cache_dir, cache_days, cache_size):
         )
     elif url_parts.scheme in ('postgis', 'postgres'):
         return PostgisClient(backend_url)
+    elif url_parts.scheme in ('s3',):
+        return OvertureClient(backend_url)
     else:
         raise ValueError("Unrecognized protocol %r" % url_parts.scheme)
 
