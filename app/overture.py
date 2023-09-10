@@ -7,29 +7,17 @@ from overpass import tile_bbox_from_x_y
 
 
 # See examples at https://github.com/OvertureMaps/data/blob/main/README.md
+# Also: https://til.simonwillison.net/overture-maps/overture-maps-parquet
 tile_query = """
-SELECT TOP 10 *
-  FROM
-       OPENROWSET(
-           BULK %(server_url)r,
-           FORMAT = 'PARQUET'
-       )
-  WITH
-       (
-           names VARCHAR(MAX),
-           categories VARCHAR(MAX),
-           websites VARCHAR(MAX),
-           phones VARCHAR(MAX),
-           bbox VARCHAR(200),
-           geometry VARBINARY(MAX)
-       )
-    AS
-       [result]
- WHERE
-       TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.minx')) > %(min_x)s
-   AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.maxx')) < %(mix_x)s
-   AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.miny')) > %(min_y)s
-   AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.maxy')) < %(max_y)s
+select
+  count(*)
+from
+  read_parquet(%(server_url)r, filename=true, hive_partitioning=1)
+where
+  bbox.minx > %(min_x)s
+  and bbox.maxx < %(max_x)s
+  and bbox.miny > %(min_y)s
+  and bbox.maxy < %(max_y)s
 """
 
 
@@ -39,21 +27,30 @@ class OvertureClient:
     """
 
     def __init__(self, server):
+        # e.g. 's3://overturemaps-us-west-2/release/2023-07-26-alpha.0/theme=places/type=*/*'
         self.server = server
+        self.db = duckdb.connect()
+        self.db.execute("""
+            INSTALL httpfs; LOAD httpfs;
+            INSTALL spatial; LOAD spatial;
+            SET s3_region='us-west-2';
+        """)
 
     @sentry_sdk.trace
     async def query(self, x, y):
         min_x, min_y, max_x, max_y = tile_bbox_from_x_y(x, y)
         q = tile_query % {
             "server_url": self.server,
-            "min_x": min_x,
-            "max_x": max_x,
-            "min_y": min_y,
-            "max_y": max_y,
+            #XXX swapping X/Y here based on what matches expected results 
+            "min_x": min_y,
+            "max_x": max_y,
+            "min_y": min_x,
+            "max_y": max_x,
         }
 
         try:
-            return duckdb.sql(q)
+            response = self.db.sql(q)
+            return response
         except Exception as e:
             print(e)
             raise
