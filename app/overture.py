@@ -10,7 +10,10 @@ from overpass import tile_bbox_from_x_y
 # Also: https://til.simonwillison.net/overture-maps/overture-maps-parquet
 tile_query = """
 select
-  count(*)
+  id,
+  names,
+  categories,
+  geometry
 from
   read_parquet(%(server_url)r, filename=true, hive_partitioning=1)
 where
@@ -49,8 +52,13 @@ class OvertureClient:
         }
 
         try:
-            response = self.db.sql(q)
-            return response
+            cursor = self.db.execute(q)
+            # convert to DuckDB spatial data to JSON
+            # (https://til.simonwillison.net/overture-maps/overture-maps-parquet#user-content-exporting-the-places-to-sqlite)
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            dicts = [dict(zip(columns, row)) for row in rows]
+            return dicts
         except Exception as e:
             print(e)
             raise
