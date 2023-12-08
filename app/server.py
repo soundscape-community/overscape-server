@@ -3,6 +3,7 @@ import json
 from urllib.parse import urlparse
 
 from aiohttp import web
+from aiohttp_cors import ResourceOptions, setup as cors_setup
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
@@ -78,12 +79,26 @@ def run_server(
     sentry_sdk.set_tag(
         "backend_url", backend_url
     )  # Tag all requests for the lifecycle of the app with the overpass URL used
+
     app = web.Application()
-    app["backend_client"] =backend_client(
-        backend_url, user_agent, cache_dir, cache_days, cache_size)
+    app["backend_client"] = backend_client(
+        backend_url, user_agent, cache_dir, cache_days, cache_size
+    )
     app.add_routes(
         [
             web.get(r"/tiles/{zoom:\d+}/{x:\d+}/{y:\d+}.json", tile_handler),
         ]
     )
+
+    # Allow web apps running on any domain to make API calls to this server
+    cors = cors_setup(app, defaults={
+        "*": ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*",
+        )
+    })
+    for route in list(app.router.routes()):
+        cors.add(route)
+
     web.run_app(app, port=port)
